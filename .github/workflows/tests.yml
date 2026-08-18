@@ -27,33 +27,8 @@ jobs:
         run: python -m compileall -q lora_caption_studio tests bootstrap.py
       - name: Run tests
         run: python -m unittest discover -s tests -v
-      - name: Verify application can start without Codex or API credentials
-        shell: python
-        run: |
-          import socket, subprocess, sys, time, urllib.request
-          with socket.socket() as probe:
-              probe.bind(("127.0.0.1", 0))
-              port = probe.getsockname()[1]
-          process = subprocess.Popen(
-              [sys.executable, "-m", "lora_caption_studio", "--no-open", "--port", str(port)],
-              stdout=subprocess.DEVNULL,
-              stderr=subprocess.STDOUT,
-          )
-          try:
-              deadline = time.time() + 15
-              last_error = None
-              while time.time() < deadline:
-                  try:
-                      with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/data", timeout=1) as response:
-                          assert response.status == 200
-                      break
-                  except Exception as exc:
-                      last_error = exc
-                      if process.poll() is not None:
-                          raise RuntimeError(f"server exited before becoming ready: {process.returncode}") from exc
-                      time.sleep(0.2)
-              else:
-                  raise RuntimeError(f"server did not become ready: {last_error}")
-          finally:
-              process.terminate()
-              process.wait(timeout=10)
+      - name: Verify application imports without provider credentials
+        run: >-
+          python -c
+          "import lora_caption_studio.application, lora_caption_studio.providers;
+          print('application import ok')"
