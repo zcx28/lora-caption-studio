@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LoRA Caption Studio</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="booting">
+    <section class="direct-open" aria-labelledby="directOpenTitle">
+      <div class="direct-open-card">
+        <div class="direct-open-brand">LoRA Caption Studio</div>
+        <div class="direct-open-copy">
+          <h1 id="directOpenTitle">请从启动器打开</h1>
+          <p>你现在打开的是界面源文件，因此打标服务、图片和任务状态都无法连接。</p>
+        </div>
+        <div class="launcher-file">
+          <span>请回到项目根目录运行</span>
+          <strong>start_macos.command / start_windows.bat</strong>
+        </div>
+        <button id="copyLauncherPath" class="primary">复制项目路径</button>
+        <p class="launcher-note" id="launcherPath"></p>
+      </div>
+    </section>
+
+    <header class="topbar">
+      <div class="brand">
+        <h1>LoRA Caption Studio</h1>
+        <p id="sourcePath">尚未选择图片文件夹</p>
+      </div>
+
+      <button id="providerStatusButton" class="run-status" title="查看 AI Provider 设置">
+        <span id="modelName">Codex CLI</span>
+        <b id="queueState">空闲</b>
+      </button>
+
+      <div class="top-actions">
+        <button id="settingsButton" class="quiet">AI 设置</button>
+        <button id="chooseFolderButton" class="quiet folder-button">选择文件夹</button>
+        <button id="pauseButton" class="quiet" disabled>立即暂停</button>
+        <button id="startButton" class="primary" disabled>生成已选图片</button>
+      </div>
+    </header>
+
+    <section class="progress-area">
+      <div class="progress-copy">
+        <div><strong id="progressTitle">0 / 0</strong><span id="progressNote">选择文件夹后开始</span></div>
+        <span id="lastLog"></span>
+      </div>
+      <div class="progress-track" aria-label="生成进度"><span id="progressBar"></span></div>
+
+      <div class="tabs-row">
+        <nav class="status-tabs" id="statusTabs" aria-label="按状态筛选">
+          <button data-filter="all" class="active">全部 <em id="countAll">0</em></button>
+          <button data-filter="ungenerated">未生成 <em id="countUngenerated">0</em></button>
+          <button data-filter="pending">待复核 <em id="countPending">0</em></button>
+          <button data-filter="confirmed">已确认 <em id="countConfirmed">0</em></button>
+          <button data-filter="failed" id="failedTab" class="hidden">失败 <em id="countFailed">0</em></button>
+        </nav>
+
+        <div class="view-switch" role="group" aria-label="浏览视图">
+          <button id="listViewButton" class="active" aria-pressed="true">列表</button>
+          <button id="galleryViewButton" aria-pressed="false">画廊</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="no-dataset-state" id="noDatasetState">
+      <div>
+        <h2>选择要打标的图片文件夹</h2>
+        <p>支持 JPG、PNG 和 WebP。原始图片不会被复制、压缩或重命名。</p>
+        <button id="emptyChooseFolderButton" class="primary">选择图片文件夹</button>
+      </div>
+    </section>
+
+    <main class="workspace" id="workspace">
+      <aside class="browser-panel">
+        <div class="browser-tools">
+          <label class="search">
+            <span aria-hidden="true"></span>
+            <input id="searchInput" placeholder="搜索文件名" autocomplete="off" />
+          </label>
+          <label class="select-all"><input type="checkbox" id="selectAll" /> 全选当前</label>
+          <span id="selectedCount">已选 0</span>
+          <span id="visibleCount">0 张</span>
+        </div>
+
+        <section class="context-panel hidden" id="guidancePanel">
+          <div class="context-heading">
+            <strong>给 AI 的补充要求</strong>
+            <span>可直接输入中文，内容会融入最终英文 Caption</span>
+          </div>
+          <textarea id="guidanceInput" rows="2" placeholder="例如：强调人物手里的红色雨伞；不要描述背景中的路人。"></textarea>
+        </section>
+
+        <section class="failure-tools hidden" id="failureTools">
+          <div><strong>有图片未能生成</strong><span>可逐张查看错误，或重新处理本页全部失败项。</span></div>
+          <button id="retryButton" class="quiet">重试全部失败项</button>
+        </section>
+
+        <div class="image-list" id="imageList"></div>
+        <div class="empty hidden" id="empty">当前条件下没有图片</div>
+      </aside>
+
+      <section class="editor-panel">
+        <div class="empty-editor" id="emptyEditor">
+          <h2 id="emptyEditorTitle">选择一张图片开始复核</h2>
+          <p>在“全部”中勾选需要打标的图片，也可以一次全选。</p>
+        </div>
+
+        <div class="editor-content hidden" id="editorContent">
+          <div class="image-stage" id="imageStage">
+            <img id="mainImage" alt="当前训练图片" />
+            <button id="expandButton" class="expand" title="查看完整图片" aria-label="查看完整图片">展开</button>
+            <span class="image-number" id="imageNumber"></span>
+          </div>
+
+          <div class="caption-sheet">
+            <div class="caption-heading">
+              <div>
+                <p id="currentFilename"></p>
+                <h2>英文训练 Caption</h2>
+              </div>
+              <div class="caption-meta">
+                <span id="statusBadge" class="badge"></span>
+                <span id="wordCount">0 词</span>
+              </div>
+            </div>
+
+            <textarea id="captionInput" spellcheck="true" placeholder="等待 AI 生成，或在这里编辑英文 Caption…"></textarea>
+            <div class="warnings hidden" id="warnings"></div>
+
+            <details class="translation-block">
+              <summary><strong>中文参考译文</strong><span>仅供核对，不写入 .txt</span></summary>
+              <p id="translation">暂未生成中文翻译。</p>
+            </details>
+
+            <div class="error-box hidden" id="errorBox"></div>
+
+            <div class="regenerate-row">
+              <input id="regenerateGuidance" placeholder="补充重新生成要求，可留空" autocomplete="off" />
+              <button id="regenerateButton" class="quiet">重新生成</button>
+            </div>
+
+            <div class="editor-actions">
+              <span>确认后会写入同名 .txt</span>
+              <button id="confirmButton" class="primary">确认并下一张 <kbd>Ctrl/⌘ ↵</kbd></button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="blocking-error hidden" id="blockingError"></div>
+    <div class="toast" id="toast"></div>
+
+    <dialog id="previewDialog">
+      <button id="closePreview" class="dialog-close" aria-label="关闭">关闭</button>
+      <img id="previewImage" alt="完整图片预览" />
+    </dialog>
+
+    <dialog id="settingsDialog" class="settings-dialog">
+      <form id="settingsForm">
+        <div class="settings-heading">
+          <div>
+            <p>本机配置</p>
+            <h2>AI Provider</h2>
+          </div>
+          <button type="button" id="closeSettings" class="quiet">关闭</button>
+        </div>
+
+        <label class="settings-field">
+          <span>调用方式</span>
+          <select id="providerSelect">
+            <option value="codex">Codex CLI</option>
+            <option value="openai">OpenAI API</option>
+          </select>
+        </label>
+
+        <section id="codexSettings" class="provider-settings">
+          <p id="codexStatus">正在检测系统 PATH 中的 Codex CLI…</p>
+          <label class="settings-field">
+            <span>Codex 模型 <small>留空时使用 CLI 默认模型</small></span>
+            <input id="codexModelInput" autocomplete="off" placeholder="留空使用默认模型" />
+          </label>
+          <a href="https://developers.openai.com/codex/cli" target="_blank" rel="noreferrer">官方安装与登录说明</a>
+        </section>
+
+        <section id="openaiSettings" class="provider-settings hidden">
+          <label class="settings-field">
+            <span>模型</span>
+            <input id="openaiModelInput" list="openaiModels" autocomplete="off" placeholder="gpt-5.6-luna" required />
+            <datalist id="openaiModels">
+              <option value="gpt-5.6-luna"></option>
+              <option value="gpt-5.6-terra"></option>
+              <option value="gpt-5.6-sol"></option>
+              <option value="gpt-5.4-mini"></option>
+            </datalist>
+          </label>
+          <label class="settings-field">
+            <span>OpenAI API Key <small id="apiKeyStatus">尚未配置</small></span>
+            <input id="apiKeyInput" type="password" autocomplete="off" placeholder="留空则保留现有 Key" />
+          </label>
+          <label class="settings-check"><input id="saveApiKey" type="checkbox" /> 保存到此电脑的用户配置目录</label>
+          <p class="settings-note">不勾选时，新输入的 Key 只保留到本次程序退出。Key 不会返回页面、写入日志或项目文件。</p>
+          <button type="button" id="forgetApiKey" class="text-button">清除本机已保存的 Key</button>
+        </section>
+
+        <label class="settings-field">
+          <span>LoRA 触发词</span>
+          <input id="triggerInput" autocomplete="off" maxlength="120" placeholder="my_style" required />
+        </label>
+
+        <div class="settings-actions">
+          <span id="providerDetail"></span>
+          <button type="submit" class="primary">保存设置</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
