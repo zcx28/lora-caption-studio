@@ -30,8 +30,10 @@ jobs:
       - name: Verify application can start without Codex or API credentials
         shell: python
         run: |
-          import subprocess, sys, time, urllib.request
-          port = 8766
+          import socket, subprocess, sys, time, urllib.request
+          with socket.socket() as probe:
+              probe.bind(("127.0.0.1", 0))
+              port = probe.getsockname()[1]
           process = subprocess.Popen(
               [sys.executable, "-m", "lora_caption_studio", "--no-open", "--port", str(port)],
               stdout=subprocess.DEVNULL,
