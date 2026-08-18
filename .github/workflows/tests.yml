@@ -31,26 +31,27 @@ jobs:
         shell: python
         run: |
           import subprocess, sys, time, urllib.request
+          port = 8766
           process = subprocess.Popen(
-              [sys.executable, "-m", "lora_caption_studio", "--no-open", "--port", "0"],
-              stdout=subprocess.PIPE,
+              [sys.executable, "-m", "lora_caption_studio", "--no-open", "--port", str(port)],
+              stdout=subprocess.DEVNULL,
               stderr=subprocess.STDOUT,
-              text=True,
-              encoding="utf-8",
-              errors="replace",
           )
           try:
               deadline = time.time() + 15
-              url = None
+              last_error = None
               while time.time() < deadline:
-                  line = process.stdout.readline()
-                  if "http://" in line:
-                      url = line[line.index("http://"):].strip()
+                  try:
+                      with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/data", timeout=1) as response:
+                          assert response.status == 200
                       break
-              if not url:
-                  raise RuntimeError("server did not report its URL")
-              with urllib.request.urlopen(url + "api/data", timeout=5) as response:
-                  assert response.status == 200
+                  except Exception as exc:
+                      last_error = exc
+                      if process.poll() is not None:
+                          raise RuntimeError(f"server exited before becoming ready: {process.returncode}") from exc
+                      time.sleep(0.2)
+              else:
+                  raise RuntimeError(f"server did not become ready: {last_error}")
           finally:
               process.terminate()
               process.wait(timeout=10)
