@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local credentials and environment
+.env
+.env.*
+!.env.example
+*credentials*.json
+*secrets*.json
+cookies.txt
+*.pem
+*.key
+
+# Runtime data (kept in the OS user data directory by default)
+data/
+state/
+datasets/
+dataset/
+captions/
+thumbs/
+logs/
+outputs/
+selection_manifest.csv
+caption_state.json
+filename_map.csv
+caption_result.schema.json
+rename_transaction.json
+*.log
+
+# Editors and operating systems
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
